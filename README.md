@@ -10,6 +10,40 @@ An intelligent home automation system powered by AI, featuring a fully decoupled
 - ⚡ **Robust Backend**: Fast, type-safe API built with FastAPI and Pydantic
 - 📱 **Easy to Use**: Intuitive controls, quick scenes, and real-time device tracking
 
+## System Architecture
+
+```mermaid
+graph TD
+    User([User]) --> |Interacts via Browser| Frontend
+    
+    subgraph Client
+        Frontend[React + Vite UI]
+        Voice[Voice Recorder API]
+    end
+    
+    Frontend --> |REST API JSON| Backend
+    Voice --> |audio/webm uploads| Backend
+    
+    subgraph Server
+        Backend[FastAPI App]
+        State[(In-Memory State)]
+        AI_Service[AI Controller Service]
+    end
+    
+    Backend --> |Read/Write| State
+    Backend --> |Text/Audio Data| AI_Service
+    
+    subgraph External
+        Groq_LLM[Groq Llama-3 API]
+        Groq_Whisper[Groq Whisper API]
+    end
+    
+    AI_Service --> |Text Prompts| Groq_LLM
+    AI_Service --> |Audio Data| Groq_Whisper
+    Groq_LLM --> |Structured JSON Commands| AI_Service
+    Groq_Whisper --> |Transcribed Text| AI_Service
+```
+
 ## Requirements
 
 - Python 3.8+
