@@ -143,3 +143,8 @@ python_cache_key.md5
 .env
 .env.local
 .streamlit/secrets.toml
+
+# Vite build
+dist/
+dist-ssr/
+*.local
