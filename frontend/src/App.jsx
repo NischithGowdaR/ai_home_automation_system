@@ -5,11 +5,13 @@ import VoiceCommand from './components/VoiceCommand';
 import ActionLog from './components/ActionLog';
 import RoutineList from './components/RoutineList';
 import Dashboard from './components/Dashboard';
+import Auth from './components/Auth';
 import { LayoutDashboard } from 'lucide-react';
 
 const API_BASE_URL = 'http://127.0.0.1:8000/api';
 
 function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [state, setState] = useState({ devices: {}, action_log: [], routines: [] });
 
@@ -24,10 +26,11 @@ function App() {
   };
 
   useEffect(() => {
+    if (!isAuthenticated) return;
     fetchState();
     const interval = setInterval(fetchState, 3000); // Poll for updates
     return () => clearInterval(interval);
-  }, []);
+  }, [isAuthenticated]);
 
   const handleDeviceToggle = async (deviceName) => {
     try {
@@ -101,6 +104,10 @@ function App() {
       console.error("Run scene failed", err);
     }
   };
+
+  if (!isAuthenticated) {
+    return <Auth onLoginSuccess={() => setIsAuthenticated(true)} apiUrl={API_BASE_URL} />;
+  }
 
   return (
     <div className="app-container">

@@ -48,3 +48,7 @@ class AddRoutineRequest(BaseModel):
 
 class ToggleRoutineRequest(BaseModel):
     index: int
+
+class AuthRequest(BaseModel):
+    username: str
+    password: str

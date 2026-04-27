@@ -1,14 +1,32 @@
+import os
+from dotenv import load_dotenv
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from models import (
     ToggleRequest, SetDeviceRequest, TextCommandRequest, 
-    SceneRequest, AddRoutineRequest, ToggleRoutineRequest
+    SceneRequest, AddRoutineRequest, ToggleRoutineRequest, AuthRequest
 )
 import state
 import ai_service
 import uvicorn
+from pymongo import MongoClient
+from pymongo.errors import ServerSelectionTimeoutError
+from passlib.context import CryptContext
+
+dotenv_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env')
+load_dotenv(dotenv_path)
+
+MONGODB_URL = os.getenv("MONGODB_URL", "")
 
 app = FastAPI(title="SmartHome AI Backend")
+
+# MongoDB setup
+client = MongoClient(MONGODB_URL, serverSelectionTimeoutMS=5000)
+db = client["smarthome"]
+users_collection = db["users"]
+
+# Password hashing setup
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # Allow CORS for local frontend
 app.add_middleware(
@@ -26,6 +44,37 @@ def get_state():
         "action_log": state.action_log,
         "routines": state.routines
     }
+
+@app.post("/api/auth/login")
+def login(req: AuthRequest):
+    try:
+        user = users_collection.find_one({"username": req.username})
+        if not user or not pwd_context.verify(req.password, user["password"]):
+            raise HTTPException(status_code=401, detail="Invalid username or password")
+        return {"status": "success", "message": "Login successful"}
+    except ServerSelectionTimeoutError:
+        raise HTTPException(status_code=500, detail="Could not connect to database")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/auth/signup")
+def signup(req: AuthRequest):
+    try:
+        if users_collection.find_one({"username": req.username}):
+            raise HTTPException(status_code=400, detail="Username already exists")
+        
+        hashed_password = pwd_context.hash(req.password)
+        users_collection.insert_one({"username": req.username, "password": hashed_password})
+        
+        return {"status": "success", "message": "Signup successful. Please login."}
+    except ServerSelectionTimeoutError:
+        raise HTTPException(status_code=500, detail="Could not connect to database")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/device/toggle")
 def toggle_device(req: ToggleRequest):
@@ -115,4 +164,4 @@ def clear_log():
     return {"status": "success"}
 
 if __name__ == "__main__":
-    uvicorn.run("backend.main:app", host="127.0.0.1", port=8000, reload=True)
+    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
